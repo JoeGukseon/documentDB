@@ -2,36 +2,57 @@ package com.test.documentdb;
 
 import com.mongodb.client.*;
 import org.bson.Document;
-import org.springframework.boot.SpringApplication;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.net.URL;
-import java.security.KeyStore;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 
 @SpringBootApplication
 public class DocumentDbApplication {
 
-    private static final String SSL_CERTIFICATE = "global-bundle.pem";
-     private static final String KEY_STORE_TYPE = "JKS";
-     private static final String KEY_STORE_PROVIDER = "SUN";
-     private static final String KEY_STORE_FILE_PREFIX = "sys-connect-via-ssl-test-cacerts";
-     private static final String KEY_STORE_FILE_SUFFIX = ".jks";
-     private static final String DEFAULT_KEY_STORE_PASSWORD = "changeit";
+    @Value("${username}")
+    private String usernameV;
+
+    @Value("${password}")
+    private String passwordV;
+
+    @Value("${truststorePassword}")
+    private String truststorePasswordV;
 
     public static void main(String[] args) {
         // SSLContextHelper.setSslProperties();
-        String template = "mongodb://%s:%s@%s/Chatting?replicaSet=rs0&readpreference=%s";
-        String username = "zipcks1381";
-        String password = "partypeople1381$";
+        String template = "mongodb://%s:%s@%s/Chatting?tls=true&replicaSet=rs0&readpreference=%s";
+        String username = usernameV;
+        String password = passwordV;
         String clusterEndpoint = "chatting.cluster-caftzpxwupgi.ap-northeast-2.docdb.amazonaws.com:27017";
         String readPreference = "secondaryPreferred";
         String connectionString = String.format(template, username, password, clusterEndpoint, readPreference);
-        
+
+        String truststore = "/home/ubuntu/documentDB/src/main/resources/rds-truststore.jks";
+        String truststorePassword = truststorePasswordV;
+
+        // FileInputStream jksInputStream = new FileInputStream(truststore);
+        // KeyStore jksKeyStore = KeyStore.getInstance("JKS");
+        // jksKeyStore.load(jksInputStream, jksPassword);
+        // jksInputStream.close();
+
+        // TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        // trustManagerFactory.init(jksKeyStore);
+
+        // KeyManagerFactory keyManagerFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+
+        // SSLContext sslContext = SSLContext.getInstance("TLS");
+        // sslContext.init(null, trustManagerFactory.getTrustManagers(), null);
+
+        // MongoClientSettings settings = MongoClientSettings.builder()
+        //         .applyConnectionString(new ConnectionString(connectionString))
+        //         .applyToSslSettings(builder ->
+        //                 builder.enabled(true)
+        //                         .context(sslContext))
+        //         .build();
+
+        // MongoClient mongoClient = MongoClients.create(settings);
+        System.setProperty("javax.net.ssl.trustStore", truststore);
+        System.setProperty("javax.net.ssl.trustStorePassword", truststorePassword);
+
         MongoClient mongoClient = MongoClients.create(connectionString);
 
         MongoDatabase testDB = mongoClient.getDatabase("Chatting");
@@ -41,73 +62,10 @@ public class DocumentDbApplication {
         numbersCollection.insertOne(doc);
 
         MongoCursor<Document> cursor = numbersCollection.find().iterator();
-        try {
-            while (cursor.hasNext()) {
-                System.out.println(cursor.next().toJson());
-            }
-        } finally {
-            // cursor.close();
+        while (cursor.hasNext()) {
+            System.out.println(cursor.next().toJson());
         }
-        
-        SpringApplication.run(DocumentDbApplication.class, args);
-    }
 
-
-    protected static class SSLContextHelper{
-    /**
-     * This method sets the SSL properties which specify the key store file, its type and password:
-     * @throws Exception
-     */
-    private static void setSslProperties()  {
-
-        try {
-            System.setProperty("javax.net.ssl.trustStore", createKeyStoreFile());
-        } catch (Exception e) {
-
-            e.printStackTrace();
-        }
-        System.setProperty("javax.net.ssl.trustStoreType", KEY_STORE_TYPE);
-        System.setProperty("javax.net.ssl.trustStorePassword", DEFAULT_KEY_STORE_PASSWORD);
-    }
-
-
-    private static String createKeyStoreFile() throws Exception {
-        return createKeyStoreFile(createCertificate()).getPath();
-    }
-
-    /**
-     *  This method generates the SSL certificate
-     * @return
-     * @throws Exception
-     */
-    private static X509Certificate createCertificate() throws Exception {
-        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
-        URL url = new File(SSL_CERTIFICATE).toURI().toURL();
-        if (url == null) {
-            throw new Exception();
-        }
-        try (InputStream certInputStream = url.openStream()) {
-            return (X509Certificate) certFactory.generateCertificate(certInputStream);
-        }
-    }
-
-    /**
-     * This method creates the Key Store File
-     * @param rootX509Certificate - the SSL certificate to be stored in the KeyStore
-     * @return
-     * @throws Exception
-     */
-    private static File createKeyStoreFile(X509Certificate rootX509Certificate) throws Exception {
-        File keyStoreFile = File.createTempFile(KEY_STORE_FILE_PREFIX, KEY_STORE_FILE_SUFFIX);
-        try (FileOutputStream fos = new FileOutputStream(keyStoreFile.getPath())) {
-            KeyStore ks = KeyStore.getInstance(KEY_STORE_TYPE, KEY_STORE_PROVIDER);
-            ks.load(null);
-            ks.setCertificateEntry("rootCaCertificate", rootX509Certificate);
-            ks.store(fos, DEFAULT_KEY_STORE_PASSWORD.toCharArray());
-        }
-        return keyStoreFile;
-    }
-
-
+        // SpringApplication.run(DocumentDbApplication.class, args);
     }
 }
