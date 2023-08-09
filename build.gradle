@@ -24,3 +24,8 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+task runJava(type: JavaExec) {
+    main = 'com.test.documentdb.DocumentDbApplication'
+    classpath = sourceSets.main.runtimeClasspath
+}
